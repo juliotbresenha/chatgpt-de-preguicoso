@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface IA - Desktop</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #212121; color: #ececec; display: flex; height: 100vh; overflow: hidden; position: relative; }
+        
+        /* Barra Lateral */
+        .sidebar { width: 260px; background-color: #171717; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid #2f2f2f; z-index: 10; }
+        .nav-links { display: flex; flex-direction: column; gap: 8px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; color: #c5c5d2; font-size: 14px; text-decoration: none; cursor: pointer; transition: background 0.2s; }
+        .nav-item:hover { background-color: #212121; color: #fff; }
+        
+        /* Área Principal */
+        .main-content { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; justify-content: center; align-items: center; padding: 40px; }
+        .chat-wrapper { max-width: 768px; width: 100%; display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        
+        /* Tela Inicial / Status */
+        .welcome-container { display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .logo-placeholder { width: 48px; height: 48px; background-color: #343541; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 1px solid #4f4f4f; }
+        .logo-placeholder svg { width: 28px; height: 28px; fill: #fff; }
+        .welcome-title { font-size: 24px; font-weight: 600; margin-bottom: 16px; }
+        .status-badge { background-color: #343541; padding: 8px 16px; border-radius: 20px; font-size: 14px; color: #10a37f; border: 1px solid #4f4f4f; font-weight: bold; }
+        .counter-badge { background-color: #2a2b36; color: #b4b4b4; padding: 4px 12px; border-radius: 12px; font-size: 12px; margin-top: 8px; border: 1px solid #3d3e4f; display: none; }
+
+        /* Exibição Única de Mensagens (Sem Histórico) */
+        .message-display { width: 100%; display: flex; flex-direction: column; gap: 12px; min-height: 180px; justify-content: center; }
+        .message { display: flex; gap: 16px; width: 100%; padding: 16px; border-radius: 8px; animation: fadeIn 0.2s ease; }
+        .message.user { background-color: #2f2f2f; border-radius: 12px; }
+        .avatar { width: 30px; height: 30px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; flex-shrink: 0; }
+        .user .avatar { background-color: #543a3a; color: #fff; }
+        .bot .avatar { background-color: #10a37f; color: #fff; }
+        .msg-text { font-size: 16px; line-height: 1.6; color: #ececec; white-space: pre-wrap; }
+
+        /* Painel de Ações de Fluxo */
+        .flow-actions { display: flex; gap: 12px; margin-top: 12px; display: none; animation: fadeIn 0.3s ease; }
+        .btn-action { background-color: #2f2f2f; border: 1px solid #424242; color: #fff; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s; }
+        .btn-action:hover { background-color: #383838; border-color: #676767; }
+        .btn-action.primary { background-color: #10a37f; border: none; }
+        .btn-action.primary:hover { background-color: #1a7f66; }
+
+        /* Rodapé Fixo */
+        .input-container { position: absolute; bottom: 24px; max-width: 768px; width: calc(100% - 80px); text-align: center; }
+        .footer-text { font-size: 13px; color: #9a9a9a; }
+        .footer-text strong { color: #fff; background-color: #383838; padding: 2px 6px; border-radius: 4px; }
+
+        /* Painel Lateral de Configurações */
+        .config-panel { position: absolute; top: 0; right: -320px; width: 320px; height: 100%; background-color: #171717; border-left: 1px solid #2f2f2f; padding: 24px; display: flex; flex-direction: column; gap: 24px; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 20; }
+        .config-panel.open { right: 0; }
+        .config-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2f2f2f; padding-bottom: 12px; }
+        .config-header h2 { font-size: 18px; font-weight: 600; }
+        .close-config { background: none; border: none; color: #9a9a9a; cursor: pointer; font-size: 20px; }
+        .close-config:hover { color: #fff; }
+        .config-group { display: flex; flex-direction: column; gap: 8px; }
+        .config-group label { font-size: 14px; color: #c5c5d2; }
+        .config-group select, .config-group input[type="range"] { width: 100%; background-color: #2f2f2f; border: 1px solid #424242; padding: 10px; border-radius: 6px; color: #fff; outline: none; font-size: 14px; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+
+    <script>
+        window.toggleConfig = function() {
+            const panel = document.getElementById('configPanel');
+            if (panel) panel.classList.toggle('open');
+        }
+
+        window.atualizarStatus = function(texto, cor = '#10a37f') {
+            const badge = document.getElementById('statusBadge');
+            if (badge) {
+                badge.innerText = texto;
+                badge.style.color = cor;
+            }
+        }
+
+        window.injetarMensagemSegura = function(base64Texto, remetente) {
+            const display = document.getElementById('messageDisplay');
+            if (!display) return;
+            
+            display.innerHTML = ''; 
+            const texto = decodeURIComponent(escape(atob(base64Texto)));
+
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', remetente);
+
+            const avatar = document.createElement('div');
+            avatar.classList.add('avatar');
+            avatar.innerText = remetente === 'user' ? 'U' : 'AI';
+
+            const textDiv = document.createElement('div');
+            textDiv.classList.add('msg-text');
+            textDiv.innerText = texto;
+
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(textDiv);
+            display.appendChild(msgDiv);
+        }
+
+        window.atualizarFluxoInterface = function(totalPerguntas, limiteAtingido) {
+            const actions = document.getElementById('flowActions');
+            const badge = document.getElementById('counterBadge');
+            const btn = document.getElementById('btnFalarComplementar');
+            const footer = document.getElementById('footerText');
+
+            if (totalPerguntas >= 0 && actions && badge) {
+                actions.style.display = 'flex';
+                badge.style.display = 'block';
+                badge.innerText = `Pergunta complementar: ${totalPerguntas} / 3`;
+                
+                if (limiteAtingido && btn && footer) {
+                    btn.style.display = 'none';
+                    footer.innerHTML = "⚠️ Limite de perguntas complementares atingido. <strong>Reinicie a conversa</strong>.";
+                    if (window.pywebview && window.pywebview.api) window.pywebview.api.bloquear_microfone(true);
+                } else if (footer) {
+                    footer.innerHTML = "Clique em <strong>Falar Pergunta Complementar</strong> para liberar o microfone.";
+                    if (window.pywebview && window.pywebview.api) window.pywebview.api.bloquear_microfone(true);
+                }
+            }
+        }
+
+        window.permitirComplementar = function() {
+            const footer = document.getElementById('footerText');
+            if (footer) footer.innerHTML = "Microfone liberado! Pressione a tecla <strong>INSERT</strong> para falar.";
+            window.atualizarStatus('Pronto para ouvir complementar', '#3498db');
+            if (window.pywebview && window.pywebview.api) window.pywebview.api.bloquear_microfone(false);
+        }
+
+        window.reiniciarConversa = function() {
+            const display = document.getElementById('messageDisplay');
+            const actions = document.getElementById('flowActions');
+            const badge = document.getElementById('counterBadge');
+            const btn = document.getElementById('btnFalarComplementar');
+            const footer = document.getElementById('footerText');
+
+            if (display) display.innerHTML = '';
+            if (actions) actions.style.display = 'none';
+            if (badge) badge.style.display = 'none';
+            if (btn) btn.style.display = 'inline-block';
+            if (footer) footer.innerHTML = "Conversa reiniciada. Pressione a tecla <strong>INSERT</strong> para começar.";
+            window.atualizarStatus('Pronto para ouvir', '#10a37f');
+            
+            if (window.pywebview && window.pywebview.api) {
+                window.pywebview.api.reiniciar_conversa_backend();
+            }
+        }
+
+        window.carregarVozesDisponiveis = function(vozesJson) {
+            const select = document.getElementById('voiceSelect');
+            if (!select) return;
+            select.innerHTML = '';
+            vozesJson.forEach(voz => {
+                const opt = document.createElement('option');
+                opt.value = voz.id;
+                opt.innerText = voz.nome;
+                select.appendChild(opt);
+            });
+        }
+
+        window.salvarConfig = function(){
+            const select = document.getElementById('voiceSelect');
+            const speed = document.getElementById('speedRange');
+            const vol = document.getElementById('volumeRange');
+            
+            if (window.pywebview && window.pywebview.api) {
+                window.pywebview.api.salvar_configuracoes(select.value, parseFloat(speed.value), parseFloat(vol.value));
+            }
